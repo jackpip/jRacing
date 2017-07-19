@@ -8,11 +8,12 @@ var ballSpeedY = 5;
 var paddleX = 400;
 
 const BRICK_W = 80;
-const BRICK_H = 40;
+const BRICK_H = 20;
 const BRICK_COLS = 10;
-const BRICK_ROWS = 7;
+const BRICK_ROWS = 14;
 const BRICK_GAP = 2;
 var brickGrid = new Array(BRICK_COLS);
+var bricksLeft = 0;
 
 const PADDLE_WIDTH = 100;
 const PADDLE_THICKNESS = 10;
@@ -27,6 +28,7 @@ window.onload = function() {
 
   canvas.addEventListener('mousemove', updateMousePos);
   brickReset();
+  ballReset();
 }
 
 function updateAll() {
@@ -49,6 +51,7 @@ function ballMove() {
   }
   if(ballY > canvas.height) {
     ballReset();
+    brickReset();
   }
 }
 
@@ -59,16 +62,32 @@ function ballBrickHandling() {
 
   if (ballBrickCol >=0 && ballBrickCol < BRICK_COLS &&
       ballBrickRow >=0 && ballBrickRow < BRICK_ROWS) {
-    if (brickGrid[brickIndexUnderBall]) {
+    if (isBrickAtColRow(ballBrickCol, ballBrickRow)) {
       brickGrid[brickIndexUnderBall] = false;
+      bricksLeft--;
+
       var prevBallX = ballX - ballSpeedX;
       var prevBallY = ballY - ballSpeedY;
       var prevBrickCol = Math.floor(prevBallX / BRICK_W);
       var prevBrickRow = Math.floor(prevBallY / BRICK_H);
+
+      var bothTestsFailed = true;
+
       if (prevBrickCol != ballBrickCol) {
-        ballSpeedX *= -1;
+        if (!isBrickAtColRow(prevBrickCol, ballBrickRow)) {
+          ballSpeedX *= -1;
+          bothTestsFailed = false;
+        }
       }
+
       if (prevBrickRow != ballBrickRow) {
+        if (!isBrickAtColRow(ballBrickCol, prevBrickRow)) {
+          ballSpeedY *= -1;
+          bothTestsFailed = false;
+        }
+      }
+      if (bothTestsFailed) {
+        ballSpeedX *= -1;
         ballSpeedY *= -1;
       }
     }
@@ -88,6 +107,10 @@ function ballPaddleHandling() {
     var centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
     var ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
     ballSpeedX = ballDistFromPaddleCenterX/3;
+
+    if (bricksLeft == 0) {
+      brickReset();
+    }
   }
 }
 
@@ -123,9 +146,11 @@ function ballReset() {
 }
 
 function brickReset() {
+  bricksLeft = 0;
   for (var i = 0; i < BRICK_COLS*BRICK_ROWS; i++) {
     //brickGrid[i] = Math.random() < 0.5 ? true : false;
-    brickGrid[i] = true;
+    brickGrid[i] = i < 3*BRICK_COLS ? false : true;
+    bricksLeft++;
   }
 }
 
@@ -152,6 +177,22 @@ function updateMousePos(e) {
   mouseX = e.clientX - rect.left - root.scrollLeft;
   mouseY = e.clientY - rect.top - root.scrollTop;
   paddleX = mouseX - PADDLE_WIDTH/2;
+
+  //cheat
+  /*ballX = mouseX;
+  ballY = mouseY;
+  ballSpeedX = 5;
+  ballSpeedY = -5; */
+}
+
+function isBrickAtColRow(col, row) {
+  if (col >= 0 && col < BRICK_COLS &&
+      row >= 0 && row < BRICK_ROWS) {
+    var brickIndexUnderCoord = rowColToArrayIndex(col, row);
+    return brickGrid[brickIndexUnderCoord];
+  } else {
+    return false;
+  }
 }
 
 function rowColToArrayIndex(col, row) {
