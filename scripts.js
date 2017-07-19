@@ -12,6 +12,8 @@ const BRICK_H = 20;
 const BRICK_COLS = 10;
 const BRICK_ROWS = 14;
 const BRICK_GAP = 2;
+const GUTTER_ROWS = 3;
+const TOTAL_ROWS = BRICK_ROWS+GUTTER_ROWS;
 var brickGrid = new Array(BRICK_COLS);
 var bricksLeft = 0;
 
@@ -40,18 +42,17 @@ function ballMove() {
   ballX += ballSpeedX;
   ballY += ballSpeedY;
 
-  if(ballX < 0) {
+  if(ballX < 0 && ballSpeedX < 0.0) {
     ballSpeedX *= -1;
   }
-  if(ballX > canvas.width) {
+  if(ballX > canvas.width && ballSpeedX > 0.0) {
     ballSpeedX *= -1;
   }
-  if(ballY < 0) {
+  if(ballY < 0 && ballSpeedY < 0.0) {
     ballSpeedY *= -1;
   }
   if(ballY > canvas.height) {
     ballReset();
-    brickReset();
   }
 }
 
@@ -61,7 +62,7 @@ function ballBrickHandling() {
   var brickIndexUnderBall = rowColToArrayIndex(ballBrickCol, ballBrickRow);
 
   if (ballBrickCol >=0 && ballBrickCol < BRICK_COLS &&
-      ballBrickRow >=0 && ballBrickRow < BRICK_ROWS) {
+      ballBrickRow >=0 && ballBrickRow < TOTAL_ROWS) {
     if (isBrickAtColRow(ballBrickCol, ballBrickRow)) {
       brickGrid[brickIndexUnderBall] = false;
       bricksLeft--;
@@ -107,7 +108,7 @@ function ballPaddleHandling() {
     var centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
     var ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
     ballSpeedX = ballDistFromPaddleCenterX/3;
-
+    //console.log(bricksLeft);
     if (bricksLeft == 0) {
       brickReset();
     }
@@ -130,7 +131,7 @@ function drawAll(){
 }
 
 function drawBricks() {
-  for (var r = 0; r < BRICK_ROWS; r++) {
+  for (var r = 0; r < TOTAL_ROWS; r++) {
     for (var c = 0; c < BRICK_COLS; c++) {
       var arrayIndex = BRICK_COLS * r + c;
       if (brickGrid[arrayIndex]) {
@@ -142,15 +143,19 @@ function drawBricks() {
 
 function ballReset() {
   ballX = canvas.width/2;
-  ballY = canvas.height/2;
+  ballY = 350;
 }
 
 function brickReset() {
   bricksLeft = 0;
-  for (var i = 0; i < BRICK_COLS*BRICK_ROWS; i++) {
+  for (var i = 0; i < BRICK_COLS*TOTAL_ROWS; i++) {
     //brickGrid[i] = Math.random() < 0.5 ? true : false;
-    brickGrid[i] = i < 3*BRICK_COLS ? false : true;
-    bricksLeft++;
+    if (i < GUTTER_ROWS*BRICK_COLS) {
+      brickGrid[i] = false;
+    } else {
+      brickGrid[i] = true;
+      bricksLeft++;
+    }
   }
 }
 
@@ -187,7 +192,7 @@ function updateMousePos(e) {
 
 function isBrickAtColRow(col, row) {
   if (col >= 0 && col < BRICK_COLS &&
-      row >= 0 && row < BRICK_ROWS) {
+      row >= 0 && row < TOTAL_ROWS) {
     var brickIndexUnderCoord = rowColToArrayIndex(col, row);
     return brickGrid[brickIndexUnderCoord];
   } else {
