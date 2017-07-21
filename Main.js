@@ -5,9 +5,28 @@ var canvas, canvasContext;
 var mouseX, mouseY;
 var carX = 75;
 var carY = 75;
+var carAng = 0;
 var carRadius = 10;
-var carSpeedX = 5;
-var carSpeedY = 5;
+var carSpeed = 0;
+
+const GROUNDSPEED_DECAY_MULT = 0.95;
+const DRIVE_POWER = 0.3;
+const REVERSE_POWER = 0.2;
+const TURN_RATE = 0.04;
+
+const TRACK_ROAD = 0;
+const TRACK_WALL = 1;
+const PLAYER_START = 2;
+
+const KEY_LEFT_ARROW = 37;
+const KEY_UP_ARROW = 38;
+const KEY_RIGHT_ARROW = 39;
+const KEY_DOWN_ARROW = 40;
+
+var keyHeldGas = false;
+var keyHeldReverse = false;
+var keyHeldTurnLeft = false;
+var keyHeldTurnRight = false;
 
 const TRACK_W = 40;
 const TRACK_H = 40;
@@ -43,6 +62,8 @@ window.onload = function() {
   }
   carPic.src = "player1car.png";
   canvas.addEventListener('mousemove', updateMousePos);
+  document.addEventListener('keydown', keyPressed);
+  document.addEventListener('keyup', keyReleased);
   carReset();
 }
 
@@ -52,21 +73,21 @@ function updateAll() {
 }
 
 function carMove() {
-  carX += carSpeedX;
-  carY += carSpeedY;
-
-  if(carX < 0 && carSpeedX < 0.0) {
-    carSpeedX *= -1;
+  carSpeed *= GROUNDSPEED_DECAY_MULT;
+  if (keyHeldGas) {
+    carSpeed += DRIVE_POWER;
   }
-  if(carX > canvas.width && carSpeedX > 0.0) {
-    carSpeedX *= -1;
+  if (keyHeldReverse) {
+    carSpeed -= REVERSE_POWER;
   }
-  if(carY < 0 && carSpeedY < 0.0) {
-    carSpeedY *= -1;
+  if (keyHeldTurnLeft) {
+    carAng -= TURN_RATE;
   }
-  if(carY > canvas.height) {
-    carReset();
+  if (keyHeldTurnRight) {
+    carAng += TURN_RATE;
   }
+  carX += Math.cos(carAng) * carSpeed;
+  carY += Math.sin(carAng) * carSpeed;
 }
 
 function carTrackHandling() {
@@ -76,37 +97,16 @@ function carTrackHandling() {
 
   if (carTrackCol >=0 && carTrackCol < TRACK_COLS &&
       carTrackRow >=0 && carTrackRow < TOTAL_ROWS) {
-    if (isTrackAtColRow(carTrackCol, carTrackRow)) {
-      var prevCarX = carX - carSpeedX;
-      var prevCarY = carY - carSpeedY;
-      var prevTrackCol = Math.floor(prevCarX / TRACK_W);
-      var prevTrackRow = Math.floor(prevCarY / TRACK_H);
-
-      var bothTestsFailed = true;
-
-      if (prevTrackCol != carTrackCol) {
-        if (!isTrackAtColRow(prevTrackCol, carTrackRow)) {
-          carSpeedX *= -1;
-          bothTestsFailed = false;
-        }
-      }
-
-      if (prevTrackRow != carTrackRow) {
-        if (!isTrackAtColRow(carTrackCol, prevTrackRow)) {
-          carSpeedY *= -1;
-          bothTestsFailed = false;
-        }
-      }
-      if (bothTestsFailed) {
-        carSpeedX *= -1;
-        carSpeedY *= -1;
-      }
+    if (isWallAtColRow(carTrackCol, carTrackRow)) {
+      carX -= Math.cos(carAng) * carSpeed;
+      carY -= Math.sin(carAng) * carSpeed;
+      carSpeed *= -0.5;
     }
   }
 }
 
 function moveAll() {
-  //carMove();
+  carMove();
   carTrackHandling();
 }
 
@@ -114,7 +114,7 @@ function drawAll(){
   colorRect(0, 0, canvas.width, canvas.height, 'black');
   //colorCircle(carX, carY, carRadius, 'white');
   if (carPicLoaded) {
-    canvasContext.drawImage(carPic, carX - carPic.width/2, carY - carPic.height/2)
+    drawBitmapCenteredWithRotation(carPic, carX, carY, carAng);
   }
   drawTracks();
 
@@ -125,7 +125,7 @@ function drawTracks() {
   for (var r = 0; r < TOTAL_ROWS; r++) {
     for (var c = 0; c < TRACK_COLS; c++) {
       var arrayIndex = rowColToArrayIndex(c, r);
-      if (trackGrid[arrayIndex] == 1) {
+      if (trackGrid[arrayIndex] == TRACK_WALL) {
         colorRect(TRACK_W*c, TRACK_H*r, TRACK_W-TRACK_GAP, TRACK_H-TRACK_GAP, 'blue');
       }
     }
@@ -136,13 +136,22 @@ function carReset() {
   for (var r = 0; r < TOTAL_ROWS; r++) {
     for (var c = 0; c < TRACK_COLS; c++) {
       var arrayIndex = rowColToArrayIndex(c, r);
-      if (trackGrid[arrayIndex] == 2) {
-        trackGrid[arrayIndex] == 0;
+      if (trackGrid[arrayIndex] == PLAYER_START) {
+        trackGrid[arrayIndex] = TRACK_ROAD;
+        carAng = -Math.PI/2;
         carX = c * TRACK_W + TRACK_W/2;
         carY = r * TRACK_H + TRACK_H/2;
       }
     }
   }
+}
+
+function drawBitmapCenteredWithRotation(useBitmap, atX, atY, withAng) {
+  canvasContext.save();
+  canvasContext.translate(atX, atY);
+  canvasContext.rotate(withAng);
+  canvasContext.drawImage(useBitmap, -useBitmap.width/2, -useBitmap.height/2);
+  canvasContext.restore();
 }
 
 function colorRect(topLeftX, topLeftY, boxWidth, boxHeight, fillColor) {
@@ -175,11 +184,11 @@ function updateMousePos(e) {
   carSpeedY = -5; */
 }
 
-function isTrackAtColRow(col, row) {
+function isWallAtColRow(col, row) {
   if (col >= 0 && col < TRACK_COLS &&
       row >= 0 && row < TOTAL_ROWS) {
     var trackIndexUnderCoord = rowColToArrayIndex(col, row);
-    return trackGrid[trackIndexUnderCoord] == 1;
+    return trackGrid[trackIndexUnderCoord] == TRACK_WALL;
   } else {
     return false;
   }
@@ -187,4 +196,36 @@ function isTrackAtColRow(col, row) {
 
 function rowColToArrayIndex(col, row) {
   return col + TRACK_COLS * row;
+}
+
+function keyPressed(e) {
+  if (e.keyCode == KEY_LEFT_ARROW) {
+    keyHeldTurnLeft = true;
+  }
+  if (e.keyCode == KEY_RIGHT_ARROW) {
+    keyHeldTurnRight = true;
+  }
+  if (e.keyCode == KEY_UP_ARROW) {
+    keyHeldGas = true;
+  }
+  if (e.keyCode == KEY_DOWN_ARROW) {
+    keyHeldReverse = true;
+  }
+  e.preventDefault();
+}
+
+function keyReleased(e) {
+  if (e.keyCode == KEY_LEFT_ARROW) {
+    keyHeldTurnLeft = false;
+  }
+  if (e.keyCode == KEY_RIGHT_ARROW) {
+    keyHeldTurnRight = false;
+  }
+  if (e.keyCode == KEY_UP_ARROW) {
+    keyHeldGas = false;
+  }
+  if (e.keyCode == KEY_DOWN_ARROW) {
+    keyHeldReverse = false;
+  }
+  e.preventDefault();
 }
