@@ -10,6 +10,7 @@ function carClass() {
   this.ang = 0;
   this.speed = 0;
   this.myCarPic;
+  this.name = 'untitled';
 
   this.keyHeldGas = false;
   this.keyHeldReverse = false;
@@ -50,8 +51,11 @@ function carClass() {
     carTrackHandling(this);
   }
 
-  this.reset = function(whichImage) {
+  this.reset = function(whichImage, carName) {
+    this.name = carName;
     this.myCarPic = whichImage;
+    this.speed = 0;
+    
     for (var r = 0; r < TRACK_ROWS; r++) {
       for (var c = 0; c < TRACK_COLS; c++) {
         var arrayIndex = rowColToArrayIndex(c, r);
@@ -64,6 +68,7 @@ function carClass() {
         }
       }
     }
+    console.log("No player start found!");
   }
 
   this.draw = function() {

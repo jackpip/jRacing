@@ -18,8 +18,13 @@ function imageLoadingDone() {
   setInterval(updateAll, 1000/framesPerSecond);
 
   setupInput();
-  blueCar.reset(carPic);
-  greenCar.reset(greenCarPic);
+  loadLevel(levelOne);
+}
+
+function loadLevel(whichLevel) {
+  trackGrid = whichLevel.slice();
+  blueCar.reset(carPic, "Blue Storm");
+  greenCar.reset(greenCarPic, "Green Machine");
 }
 
 function updateAll() {
